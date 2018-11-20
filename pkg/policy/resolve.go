@@ -21,5 +21,5 @@ type Policy struct {
 	CIDRPolicy           *CIDRPolicy
 	IngressPolicyEnabled bool
 	EgressPolicyEnabled  bool
-	// TODO: plumb PolicyMapState here.
+	PolicyMapState       MapState
 }
