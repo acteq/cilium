@@ -26,13 +26,15 @@ import (
 // Policy is a structure which contains the resolved policy across all layers
 // (L3, L4, and L7).
 type Policy struct {
-	ID                   uint16
-	L4Policy             *L4Policy
-	CIDRPolicy           *CIDRPolicy
-	IngressPolicyEnabled bool
-	EgressPolicyEnabled  bool
-	PolicyMapState       MapState
-	PolicyOwner          PolicyOwner
+	ID                      uint16
+	L4Policy                *L4Policy
+	CIDRPolicy              *CIDRPolicy
+	IngressPolicyEnabled    bool
+	EgressPolicyEnabled     bool
+	PolicyMapState          MapState
+	PolicyOwner             PolicyOwner
+	DeniedIngressIdentities cache.IdentityCache
+	DeniedEgressIdentities  cache.IdentityCache
 }
 
 type PolicyOwner interface {

@@ -560,11 +560,13 @@ func (p *Repository) GetRulesList() *models.Policy {
 func (p *Repository) ResolvePolicy(id uint16, labels labels.LabelArray, policyOwner PolicyOwner, identityCache cache.IdentityCache) (*Policy, error) {
 
 	calculatedPolicy := &Policy{
-		ID:             id,
-		L4Policy:       NewL4Policy(),
-		CIDRPolicy:     NewCIDRPolicy(),
-		PolicyMapState: make(MapState),
-		PolicyOwner:    policyOwner,
+		ID:                      id,
+		L4Policy:                NewL4Policy(),
+		CIDRPolicy:              NewCIDRPolicy(),
+		PolicyMapState:          make(MapState),
+		PolicyOwner:             policyOwner,
+		DeniedIngressIdentities: cache.IdentityCache{},
+		DeniedEgressIdentities:  cache.IdentityCache{},
 	}
 	// First obtain whether policy applies in both traffic directions, as well
 	// as list of rules which actually select this endpoint. This allows us
@@ -615,6 +617,8 @@ func (p *Repository) ResolvePolicy(id uint16, labels labels.LabelArray, policyOw
 					TrafficDirection: trafficdirection.Ingress.Uint8(),
 				}
 				calculatedPolicy.PolicyMapState[keyToAdd] = MapStateEntry{}
+			} else if ingressAccess == api.Denied {
+				calculatedPolicy.DeniedIngressIdentities[identity] = labels
 			}
 		}
 	} else {
@@ -652,6 +656,8 @@ func (p *Repository) ResolvePolicy(id uint16, labels labels.LabelArray, policyOw
 					TrafficDirection: trafficdirection.Egress.Uint8(),
 				}
 				calculatedPolicy.PolicyMapState[keyToAdd] = MapStateEntry{}
+			} else if egressAccess == api.Denied {
+				calculatedPolicy.DeniedEgressIdentities[identity] = labels
 			}
 		}
 	} else {
