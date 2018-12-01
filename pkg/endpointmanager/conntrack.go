@@ -49,7 +49,7 @@ func runGC(e *endpoint.Endpoint, ipv4, ipv6 bool, filter *ctmap.GCFilter) {
 	for _, m := range maps {
 		path, err := m.Path()
 		if err == nil {
-			err = m.Open()
+			_, err = m.OpenOrCreate()
 		}
 		if err != nil {
 			log.WithError(err).WithField(logfields.Path, path).Warn("Unable to open map")

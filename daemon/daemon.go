@@ -564,26 +564,6 @@ func (d *Daemon) init() error {
 				RunInterval: 5 * time.Second,
 			})
 
-		if _, err := lbmap.Service6Map.OpenOrCreate(); err != nil {
-			return err
-		}
-		if _, err := lbmap.RevNat6Map.OpenOrCreate(); err != nil {
-			return err
-		}
-		if _, err := lbmap.RRSeq6Map.OpenOrCreate(); err != nil {
-			return err
-		}
-		if !option.Config.IPv4Disabled {
-			if _, err := lbmap.Service4Map.OpenOrCreate(); err != nil {
-				return err
-			}
-			if _, err := lbmap.RevNat4Map.OpenOrCreate(); err != nil {
-				return err
-			}
-			if _, err := lbmap.RRSeq4Map.OpenOrCreate(); err != nil {
-				return err
-			}
-		}
 		// Clean all lb entries
 		if !option.Config.RestoreState {
 			log.Debug("cleaning up all BPF LB maps")
@@ -684,6 +664,10 @@ func createNodeConfigHeaderfile() error {
 	fmt.Fprintf(fw, "#define IPCACHE_MAP_SIZE %d\n", ipcachemap.MaxEntries)
 	fmt.Fprintf(fw, "#define POLICY_PROG_MAP_SIZE %d\n", policymap.ProgArrayMaxEntries)
 	fmt.Fprintf(fw, "#define SOCKOPS_MAP_SIZE %d\n", sockmap.MaxEntries)
+
+	if option.Config.PreAllocateMaps {
+		fmt.Fprintf(fw, "#define PREALLOCATE_MAPS")
+	}
 
 	fmt.Fprintf(fw, "#define TRACE_PAYLOAD_LEN %dULL\n", tracePayloadLen)
 	fmt.Fprintf(fw, "#define MTU %d\n", mtu.GetDeviceMTU())

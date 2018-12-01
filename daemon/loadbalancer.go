@@ -424,6 +424,31 @@ func (d *Daemon) RevNATDump() ([]loadbalancer.L3n4AddrID, error) {
 	return dump, nil
 }
 
+func openServiceMaps() error {
+	if _, err := lbmap.Service6Map.OpenOrCreate(); err != nil {
+		return err
+	}
+	if _, err := lbmap.RevNat6Map.OpenOrCreate(); err != nil {
+		return err
+	}
+	if _, err := lbmap.RRSeq6Map.OpenOrCreate(); err != nil {
+		return err
+	}
+	if !option.Config.IPv4Disabled {
+		if _, err := lbmap.Service4Map.OpenOrCreate(); err != nil {
+			return err
+		}
+		if _, err := lbmap.RevNat4Map.OpenOrCreate(); err != nil {
+			return err
+		}
+		if _, err := lbmap.RRSeq4Map.OpenOrCreate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func restoreServiceIDs() {
 	svcMap, _, errors := lbmap.DumpServiceMapsToUserspace(true, false)
 	for _, err := range errors {

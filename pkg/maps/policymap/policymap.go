@@ -315,7 +315,7 @@ func OpenMap(path string) (*PolicyMap, bool, error) {
 		uint32(unsafe.Sizeof(PolicyKey{})),
 		uint32(unsafe.Sizeof(PolicyEntry{})),
 		MaxEntries,
-		0, 0,
+		bpf.GetPreAllocateMapFlags(), 0,
 	)
 
 	if err != nil {
