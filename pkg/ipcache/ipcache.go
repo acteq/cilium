@@ -288,7 +288,7 @@ func (ipc *IPCache) Upsert(ip string, hostIP net.IP, newIdentity Identity) bool 
 			}
 		}
 	} else {
-		scopedLog.Error("Attempt to upsert invalid IP into ipcache layer")
+		scopedLog.Panic("Attempt to upsert invalid IP into ipcache layer")
 		return false
 	}
 

@@ -325,22 +325,24 @@ func (d *Daemon) regenerateRestoredEndpoints(state *endpointRestoreState) {
 }
 
 func (d *Daemon) allocateIPsLocked(ep *endpoint.Endpoint) error {
-	err := ipam.AllocateIP(ep.IPv6.IP())
-	if err != nil {
-		// TODO if allocation failed reallocate a new IP address and setup veth
-		// pair accordingly
-		return fmt.Errorf("unable to reallocate IPv6 address: %s", err)
-	}
-
-	defer func(ep *endpoint.Endpoint) {
+	if option.Config.EnableIPv6 {
+		err := ipam.AllocateIP(ep.IPv6.IP())
 		if err != nil {
-			ipam.ReleaseIP(ep.IPv6.IP())
+			// TODO if allocation failed reallocate a new IP address and setup veth
+			// pair accordingly
+			return fmt.Errorf("unable to reallocate IPv6 address: %s", err)
 		}
-	}(ep)
+
+		defer func(ep *endpoint.Endpoint) {
+			if err != nil {
+				ipam.ReleaseIP(ep.IPv6.IP())
+			}
+		}(ep)
+	}
 
 	if option.Config.EnableIPv4 {
 		if ep.IPv4 != nil {
-			if err = ipam.AllocateIP(ep.IPv4.IP()); err != nil {
+			if err := ipam.AllocateIP(ep.IPv4.IP()); err != nil {
 				return fmt.Errorf("unable to reallocate IPv4 address: %s", err)
 			}
 		}

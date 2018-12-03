@@ -378,13 +378,16 @@ func (d *Daemon) setHostAddresses() error {
 			log.Infof("Using IPv4 host address: %s", option.Config.HostV4Addr)
 		}
 	}
-	hostV6Addr, err := getAddr(netlink.FAMILY_V6)
-	if err != nil {
-		return err
-	}
-	if hostV6Addr != nil {
-		option.Config.HostV6Addr = hostV6Addr
-		log.Infof("Using IPv6 host address: %s", option.Config.HostV6Addr)
+
+	if option.Config.EnableIPv6 {
+		hostV6Addr, err := getAddr(netlink.FAMILY_V6)
+		if err != nil {
+			return err
+		}
+		if hostV6Addr != nil {
+			option.Config.HostV6Addr = hostV6Addr
+			log.Infof("Using IPv6 host address: %s", option.Config.HostV6Addr)
+		}
 	}
 	return nil
 }
@@ -564,15 +567,18 @@ func (d *Daemon) init() error {
 				RunInterval: 5 * time.Second,
 			})
 
-		if _, err := lbmap.Service6Map.OpenOrCreate(); err != nil {
-			return err
+		if option.Config.EnableIPv6 {
+			if _, err := lbmap.Service6Map.OpenOrCreate(); err != nil {
+				return err
+			}
+			if _, err := lbmap.RevNat6Map.OpenOrCreate(); err != nil {
+				return err
+			}
+			if _, err := lbmap.RRSeq6Map.OpenOrCreate(); err != nil {
+				return err
+			}
 		}
-		if _, err := lbmap.RevNat6Map.OpenOrCreate(); err != nil {
-			return err
-		}
-		if _, err := lbmap.RRSeq6Map.OpenOrCreate(); err != nil {
-			return err
-		}
+
 		if option.Config.EnableIPv4 {
 			if _, err := lbmap.Service4Map.OpenOrCreate(); err != nil {
 				return err
@@ -591,13 +597,15 @@ func (d *Daemon) init() error {
 			d.loadBalancer.BPFMapMU.Lock()
 			defer d.loadBalancer.BPFMapMU.Unlock()
 
-			if err := lbmap.Service6Map.DeleteAll(); err != nil {
-				return err
+			if option.Config.EnableIPv6 {
+				if err := lbmap.Service6Map.DeleteAll(); err != nil {
+					return err
+				}
+				if err := lbmap.RRSeq6Map.DeleteAll(); err != nil {
+					return err
+				}
 			}
 			if err := d.RevNATDeleteAll(); err != nil {
-				return err
-			}
-			if err := lbmap.RRSeq6Map.DeleteAll(); err != nil {
 				return err
 			}
 
@@ -635,18 +643,11 @@ func createNodeConfigHeaderfile() error {
 	fmt.Fprintf(fw, ""+
 		"/*\n"+
 		" * Node-IPv6: %s\n"+
-		" * Router-IPv6: %s\n",
-		hostIP.String(), routerIP.String())
-
-	if !option.Config.EnableIPv4 {
-		fw.WriteString(" */\n\n")
-	} else {
-		fmt.Fprintf(fw, ""+
-			" * Host-IPv4: %s\n"+
-			" */\n\n"+
-			"#define ENABLE_IPV4\n",
-			node.GetInternalIPv4().String())
-	}
+		" * Router-IPv6: %s\n"+
+		" * Host-IPv4: %s\n"+
+		" */\n\n",
+		hostIP.String(), routerIP.String(),
+		node.GetInternalIPv4().String())
 
 	fw.WriteString(common.FmtDefineComma("ROUTER_IP", routerIP))
 
@@ -688,6 +689,14 @@ func createNodeConfigHeaderfile() error {
 	fmt.Fprintf(fw, "#define TRACE_PAYLOAD_LEN %dULL\n", tracePayloadLen)
 	fmt.Fprintf(fw, "#define MTU %d\n", mtu.GetDeviceMTU())
 
+	if option.Config.EnableIPv4 {
+		fmt.Fprintf(fw, "#define ENABLE_IPV4\n")
+	}
+
+	if option.Config.EnableIPv6 {
+		fmt.Fprintf(fw, "#define ENABLE_IPV6\n")
+	}
+
 	fw.Flush()
 	f.Close()
 
@@ -700,33 +709,44 @@ func createNodeConfigHeaderfile() error {
 func (d *Daemon) syncLXCMap() error {
 	// TODO: Update addresses first, in case node addressing has changed.
 	// TODO: Once these start changing on runtime, figure out the locking strategy.
-	specialIdentities := []identity.IPIdentityPair{
-		{
-			IP: node.GetInternalIPv4(),
-			ID: identity.ReservedIdentityHost,
-		},
-		{
-			IP: node.GetExternalIPv4(),
-			ID: identity.ReservedIdentityHost,
-		},
-		{
-			IP: node.GetIPv6(),
-			ID: identity.ReservedIdentityHost,
-		},
-		{
-			IP: node.GetIPv6Router(),
-			ID: identity.ReservedIdentityHost,
-		},
-		{
-			IP:   net.IPv4zero,
-			Mask: net.CIDRMask(0, net.IPv4len*8),
-			ID:   identity.ReservedIdentityWorld,
-		},
-		{
-			IP:   net.IPv6zero,
-			Mask: net.CIDRMask(0, net.IPv6len*8),
-			ID:   identity.ReservedIdentityWorld,
-		},
+	specialIdentities := []identity.IPIdentityPair{}
+
+	if option.Config.EnableIPv4 {
+		specialIdentities = append(specialIdentities,
+			[]identity.IPIdentityPair{
+				{
+					IP: node.GetInternalIPv4(),
+					ID: identity.ReservedIdentityHost,
+				},
+				{
+					IP: node.GetExternalIPv4(),
+					ID: identity.ReservedIdentityHost,
+				},
+				{
+					IP:   net.IPv4zero,
+					Mask: net.CIDRMask(0, net.IPv4len*8),
+					ID:   identity.ReservedIdentityWorld,
+				},
+			}...)
+	}
+
+	if option.Config.EnableIPv6 {
+		specialIdentities = append(specialIdentities,
+			[]identity.IPIdentityPair{
+				{
+					IP: node.GetIPv6(),
+					ID: identity.ReservedIdentityHost,
+				},
+				{
+					IP: node.GetIPv6Router(),
+					ID: identity.ReservedIdentityHost,
+				},
+				{
+					IP:   net.IPv6zero,
+					Mask: net.CIDRMask(0, net.IPv6len*8),
+					ID:   identity.ReservedIdentityWorld,
+				},
+			}...)
 	}
 
 	existingEndpoints, err := lxcmap.DumpToMap()
