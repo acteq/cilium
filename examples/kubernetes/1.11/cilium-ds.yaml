@@ -99,6 +99,19 @@ spec:
                 configMapKeyRef:
                   name: cilium-config
                   key: disable-ipv4
+                  optional: true
+            - name: "CILIUM_ENABLE_IPV4"
+              valueFrom:
+                configMapKeyRef:
+                  name: cilium-config
+                  key: enable-ipv4
+                  optional: true
+            - name: "CILIUM_ENABLE_IPV6"
+              valueFrom:
+                configMapKeyRef:
+                  name: cilium-config
+                  key: enable-ipv6
+                  optional: true
             # Note: this variable is a no-op if not defined, and is used in the
             # prometheus examples.
             - name: "CILIUM_PROMETHEUS_SERVE_ADDR"
