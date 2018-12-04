@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package k8s
+package endpointsynchronizer
 
 import (
 	"errors"
 	"fmt"
+	"github.com/cilium/cilium/pkg/k8s"
 	"reflect"
 	"sync"
 	"time"
@@ -79,7 +80,7 @@ func getCiliumClient() (ciliumClient cilium_client_v2.CiliumV2Interface, err err
 			k8sClient  *clientset.Clientset
 		)
 
-		restConfig, err = CreateConfig()
+		restConfig, err = k8s.CreateConfig()
 		if err != nil {
 			return
 		}
@@ -130,11 +131,11 @@ func CiliumEndpointSyncGC(podStore k8sToolsCache.Store) {
 	}
 
 	// this is a sanity check in case we are called with k8s not there
-	if !IsEnabled() {
+	if !k8s.IsEnabled() {
 		scopedLog.WithField("name", controllerName).Warn("Not running controller because k8s is disabled")
 		return
 	}
-	sv, err := GetServerVersion()
+	sv, err := k8s.GetServerVersion()
 	if err != nil {
 		scopedLog.WithError(err).Error("unable to retrieve kubernetes serverversion")
 		return
@@ -254,7 +255,7 @@ func (epSync *EndpointSynchronizer) RunK8sCiliumEndpointSync(e *endpoint.Endpoin
 		return
 	}
 
-	if !IsEnabled() {
+	if !k8s.IsEnabled() {
 		scopedLog.Debug("Not starting controller because k8s is disabled")
 		return
 	}
@@ -290,7 +291,7 @@ func (epSync *EndpointSynchronizer) RunK8sCiliumEndpointSync(e *endpoint.Endpoin
 				// This lookup can fail but once we do it once, we no longer want to try again.
 				if k8sServerVer == nil {
 					var err error
-					k8sServerVer, err = GetServerVersion()
+					k8sServerVer, err = k8s.GetServerVersion()
 					switch {
 					case err != nil:
 						scopedLog.WithError(err).Error("Unable to retrieve kubernetes server version")
