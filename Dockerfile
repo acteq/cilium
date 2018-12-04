@@ -23,7 +23,10 @@ ARG V
 # Please do not add any dependency updates before the 'make install' here,
 # as that will mess with caching for incremental builds!
 #
-RUN make LOCKDEBUG=$LOCKDEBUG PKG_BUILD=1 V=$V SKIP_DOCS=true DESTDIR=/tmp/install clean-container build install
+RUN make LOCKDEBUG=$LOCKDEBUG PKG_BUILD=1 V=$V SKIP_DOCS=true DESTDIR=/tmp/install clean-container build install \
+    && rm /tmp/install/usr/bin/cilium-operator \
+    && rm /tmp/install/usr/bin/cilium-ring-dump \
+    && rm /tmp/install/usr/bin/cilium-docker
 
 #
 # Cilium runtime install.
